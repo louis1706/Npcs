@@ -54,7 +54,7 @@ namespace NPCs.Cores.Navigation
         /// <summary>
         /// Gets or sets a value indicating whether the movement controller is paused.
         /// </summary>
-        public bool IsPaused { get; set; } = true;
+        public bool IsPaused { get; set; }
 
         private float WalkSpeed => CharacterClassManager._staticClasses[(int)npc.Role].walkSpeed;
 
@@ -72,16 +72,17 @@ namespace NPCs.Cores.Navigation
             Quaternion rot = Quaternion.LookRotation(moveDirection.normalized);
             npc.Rotation = new Vector2(rot.eulerAngles.x, rot.eulerAngles.y);
 
-            if (moveDirection.magnitude < 3)
-                return;
-
-            if (moveDirection.magnitude > 10)
+            switch (moveDirection.magnitude)
             {
-                npc.Position = FollowTarget.transform.position;
-                return;
+                case < 3:
+                    return;
+                case > 10:
+                    npc.Position = FollowTarget.transform.position;
+                    return;
+                default:
+                    Move();
+                    break;
             }
-
-            Move();
         }
 
         private void Move()
@@ -120,7 +121,7 @@ namespace NPCs.Cores.Navigation
             while (true)
             {
                 yield return Timing.WaitForSeconds(0.1f);
-                if (IsPaused)
+                if (IsPaused || !npc.IsSpawned)
                     continue;
 
                 if (FollowTarget != null)

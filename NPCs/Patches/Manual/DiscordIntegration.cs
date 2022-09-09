@@ -11,6 +11,7 @@ namespace NPCs.Patches.Manual
     using System.Collections.Generic;
     using System.Reflection;
     using System.Reflection.Emit;
+    using Exiled.API.Features;
     using Exiled.Loader;
     using HarmonyLib;
     using NorthwoodLib.Pools;
@@ -22,6 +23,13 @@ namespace NPCs.Patches.Manual
     /// </summary>
     internal class DiscordIntegration : IManualPatch
     {
+        private static IEnumerable<CodeInstruction> SubtractCountInstructions => new[]
+        {
+            new CodeInstruction(OpCodes.Call, PropertyGetter(typeof(Npc), nameof(Npc.Dictionary))),
+            new CodeInstruction(OpCodes.Call, PropertyGetter(typeof(Dictionary<GameObject, Npc>), nameof(Dictionary<GameObject, Npc>.Count))),
+            new CodeInstruction(OpCodes.Sub),
+        };
+
         /// <inheritdoc/>
         public void Patch(Harmony harmony)
         {
@@ -39,19 +47,15 @@ namespace NPCs.Patches.Manual
         /// </summary>
         private static IEnumerable<CodeInstruction> ActivityCount(IEnumerable<CodeInstruction> instructions)
         {
-            List<CodeInstruction> newInstructions = ListPool<CodeInstruction>.Shared.Rent(instructions);
-            int index = newInstructions.FindIndex(instruction => instruction.opcode == OpCodes.Box);
-            newInstructions.InsertRange(index, new[]
+            foreach (var codeInstruction in instructions)
             {
-                new CodeInstruction(OpCodes.Call, PropertyGetter(typeof(Npc), nameof(Npc.Dictionary))),
-                new CodeInstruction(OpCodes.Call, PropertyGetter(typeof(Dictionary<GameObject, Npc>), nameof(Dictionary<GameObject, Npc>.Count))),
-                new CodeInstruction(OpCodes.Sub),
-            });
+                yield return codeInstruction;
+                if (!codeInstruction.OperandIs(PropertyGetter(typeof(Dictionary<GameObject, Player>), nameof(Dictionary<GameObject, Player>.Count))))
+                    continue;
 
-            for (int z = 0; z < newInstructions.Count; z++)
-                yield return newInstructions[z];
-
-            ListPool<CodeInstruction>.Shared.Return(newInstructions);
+                foreach (var subtractInstruction in SubtractCountInstructions)
+                    yield return subtractInstruction;
+            }
         }
     }
 }

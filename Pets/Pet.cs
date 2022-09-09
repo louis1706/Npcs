@@ -8,11 +8,11 @@
 namespace Pets
 {
     using System.Collections.Generic;
+    using System.Linq;
     using Exiled.API.Features;
     using Exiled.API.Features.Items;
     using NPCs;
     using NPCs.Cores.Navigation;
-    using Pets.API;
     using UnityEngine;
 
     /// <summary>
@@ -40,9 +40,6 @@ namespace Pets
             {
                 FollowTarget = owner.GameObject,
             };
-
-            if (PetPreferences.IsShown)
-                IsShown = true;
         }
 
         /// <summary>
@@ -64,34 +61,26 @@ namespace Pets
         /// Gets or sets a value indicating whether the pet is currently visible.
         /// </summary>
         /// <remarks>This also affects the player's pet preferences.</remarks>
-        public bool IsShown
+        public new bool IsSpawned
         {
-            get => PetPreferences.IsShown;
+            get => base.IsSpawned;
             set
             {
                 PetPreferences.IsShown = value;
-                if (value)
-                {
-                    Spawn();
-                    movementCore.IsPaused = false;
-                    return;
-                }
-
-                movementCore.IsPaused = true;
-                Despawn();
+                base.IsSpawned = value;
             }
         }
 
         /// <summary>
         /// Gets or sets the pet's held item.
         /// </summary>
-        public ItemType HeldItem
+        public new Item CurrentItem
         {
-            get => CurrentItem.Type;
+            get => base.CurrentItem;
             set
             {
-                CurrentItem = Item.Create(value);
-                PetPreferences.HeldItem = value;
+                base.CurrentItem = value;
+                PetPreferences.HeldItem = value.Type;
             }
         }
 
@@ -139,21 +128,29 @@ namespace Pets
         /// </summary>
         /// <param name="owner">The owner of the pet.</param>
         /// <returns>The gotten or created pet.</returns>
-        public static Pet GetOrCreate(Player owner)
-        {
-            Pet pet = owner.GetPet();
-            if (pet is not null)
-                return pet;
+        public static Pet GetOrCreate(Player owner) => Get(owner) ?? Create(owner);
 
-            PetPreferences preferences = PetPreferences.Get(owner) ?? PetPreferences.Default;
-            pet = new Pet(owner, preferences);
+        /// <summary>
+        /// Returns a value indicating whether the player has an active pet.
+        /// </summary>
+        /// <param name="owner">The player to check.</param>
+        /// <returns>The pet, or null if none is found.</returns>
+        public static Pet Get(Player owner) => Instances.FirstOrDefault(pet => pet.Owner == owner);
+
+        /// <summary>
+        /// Creates a pet for a player.
+        /// </summary>
+        /// <param name="owner">The owner of the pet.</param>
+        /// <returns>The created pet.</returns>
+        public static Pet Create(Player owner)
+        {
+            PetPreferences preferences = PetPreferences.Get(owner) ?? new PetPreferences(owner.UserId);
+            Pet pet = new Pet(owner, preferences);
             Instances.Add(pet);
             return pet;
         }
 
-        /// <summary>
-        /// Destroys the pet and all of its logic.
-        /// </summary>
+        /// <inheritdoc />
         public override void Destroy()
         {
             movementCore.Kill();

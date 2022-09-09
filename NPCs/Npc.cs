@@ -76,6 +76,25 @@ namespace NPCs
         public static new IEnumerable<Npc> List => Dictionary.Values;
 
         /// <summary>
+        /// Gets or sets a value indicating whether the npc is spawned.
+        /// </summary>
+        public bool IsSpawned
+        {
+            get => isSpawned;
+            set
+            {
+                if (isSpawned == value)
+                    return;
+
+                isSpawned = value;
+                if (value)
+                    NetworkServer.Spawn(GameObject);
+                else
+                    NetworkServer.UnSpawn(GameObject);
+            }
+        }
+
+        /// <summary>
         /// Gets or sets the NPC's position.
         /// </summary>
         public new Vector3 Position
@@ -111,31 +130,7 @@ namespace NPCs
         }
 
         /// <summary>
-        /// Spawns the NPC.
-        /// </summary>
-        public void Spawn()
-        {
-            if (isSpawned)
-                return;
-
-            NetworkServer.Spawn(GameObject);
-            isSpawned = true;
-        }
-
-        /// <summary>
-        /// Despawns the NPC.
-        /// </summary>
-        public void Despawn()
-        {
-            if (!isSpawned)
-                return;
-
-            NetworkServer.UnSpawn(GameObject);
-            isSpawned = false;
-        }
-
-        /// <summary>
-        /// Destroys the fake player.
+        /// Destroys the npc.
         /// </summary>
         public virtual void Destroy()
         {
@@ -151,8 +146,8 @@ namespace NPCs
 
         private void Respawn()
         {
-            Despawn();
-            Spawn();
+            IsSpawned = false;
+            IsSpawned = true;
         }
 
         private void StartReferenceHub()
